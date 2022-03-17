@@ -1,0 +1,16 @@
+#pagination {
+    display: flex;
+    justify-content: center;
+}
+
+.pagination-previous {
+    margin-right: 2rem;
+}
+
+.pagination-next {
+    margin-left: 2rem;
+}
+
+.pagination-list {
+    display: flex;
+}

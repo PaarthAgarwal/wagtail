@@ -13,6 +13,12 @@
 
     <div id="search-results">
     </div>
+
+    <nav id="pagination" role="navigation" aria-label="pagination" hidden>
+        <button class="pagination-previous">Previous</button>
+        <span class="pagination-list"></span>
+        <button class="pagination-next">Next</button>
+      </nav>
 {% endblock %}
 
 {% block footer %}
@@ -24,6 +30,9 @@
             const query = urlParams.get('q')
 
             const searchResultsContainer = document.getElementById('search-results')
+            // Erase previous results
+            searchResultsContainer.innerHTML = ""
+            document.querySelector('.pagination-list').innerHTML = ""
             addHeadingForQuery(query, searchResultsContainer)
 
             const docSearch = docSearchReady()
@@ -35,10 +44,69 @@
                     facetFilters: [getVersionFacetFilter()]
                 }
             )
-                .then(({ hits }) => addResultsList(hits, query, searchResultsContainer))
+            .then(result => {
+              // Display pagination if more than 1 page returned
+              let nbPages = result["nbPages"] 
+              if (nbPages > 1) {
+                document.querySelector("#pagination").removeAttribute("hidden")
+                displayPagination(page, nbPages)
+              }
+
+              // Display hits
+              let hits = result["hits"]
+              addResultsList(hits, query, searchResultsContainer)
+            })
                 .catch((error) => console.log(error))
         }
 
+        function displayPagination(page, totalPages) {
+  const paginationDiv = document.querySelector("#pagination")
+  const paginationList = paginationDiv.querySelector(".pagination-list")
+
+  // Disable previous/next button if showing first/last page
+  if (page == 0) {
+    paginationDiv.querySelector(".pagination-previous").setAttribute("hidden","hidden")
+  }
+  paginationDiv.querySelector(".pagination-next").removeAttribute("hidden")
+  if (page == totalPages - 1) {
+    paginationDiv.querySelector(".pagination-next").setAttribute("hidden","hidden")
+  } 
+
+  let [start, end] = setStartEndForPaginator(page, totalPages, toBeDisplayed)
+
+  for (let i = start; i < end; i++) {
+    newPaginationLink.classList.add("pagination-link")
+    newPaginationLink.innerHTML = i + 1
+    paginationList.innerHTML=`Page ${page+1} of ${totalPages}`
+    // Register event handlers
+    paginationDiv.querySelector(".pagination-previous").onclick = function(event) {
+        runSearchPageSearch(event, page=page - 1)
+    };
+    paginationDiv.querySelector(".pagination-next").onclick = function(event) {
+        runSearchPageSearch(event, page=page + 1)
+    };
+
+  }
+}
+
+function setStartEndForPaginator(currentPage, totalPages, nbPagesLinkToDisplay) {
+  let start = 0
+  let end = totalPages
+
+  if (totalPages > nbPagesLinkToDisplay) {
+    start = currentPage
+
+    if (totalPages - currentPage < nbPagesLinkToDisplay) {
+      start = totalPages - nbPagesLinkToDisplay
+    } 
+
+    if (totalPages - start > nbPagesLinkToDisplay) {
+      end = currentPage + nbPagesLinkToDisplay
+    }
+  }
+
+  return [start, end]
+}
         function addHeadingForQuery(query, parentElement) {
             const searchHeading = document.createElement('h1')
             searchHeading.textContent = `Search results for “${query}”`
