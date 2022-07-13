@@ -1,5 +1,6 @@
 import React from 'react';
 import colors, { Hues, Shade } from './colors';
+import { generateColorVariables } from './colorVariables';
 
 const description = `
 Wagtail’s typographic styles are made available as separate design tokens, but in most scenarios it’s better to use one of the predefined text styles.
@@ -17,8 +18,8 @@ const getContrastGridLink = () => {
   const url = 'https://contrast-grid.eightshapes.com/';
   const parameters =
     '?version=1.1.0&es-color-form__tile-size=compact&es-color-form__show-contrast=aaa&es-color-form__show-contrast=aa&es-color-form__show-contrast=aa18';
-  const bg = [];
-  const fg = [];
+  const bg: string[] = [];
+  const fg: string[] = [];
   Object.values(colors).forEach((hues: Hues) => {
     Object.values(hues).forEach((shade: Shade) => {
       const color = `${shade.hex}, ${shade.textUtility.replace('w-text-', '')}`;
@@ -41,17 +42,19 @@ const Palette = ({ color, hues }: PaletteProps) => (
       <div key={name}>
         <h3 className="w-h3">{`${color} ${name === 'DEFAULT' ? '' : name}`}</h3>
         <div
-          className={`w-p-3 w-flex w-flex-col w-w-40 w-h-40 ${
+          className={`w-p-3 w-pr-0 w-flex w-flex-col w-w-52 w-h-52 ${
             shade.bgUtility
           } ${
-            color === 'white' ? 'w-border w-border-solid w-border-grey-600' : ''
+            color === 'white' ? 'w-border w-border-solid w-border-grey-520' : ''
           } w-text-14 w-text-${shade.contrastText}`}
         >
           <code>{shade.textUtility}</code>
           <code>{shade.bgUtility}</code>
+          <code>{shade.cssVariable}</code>
+          <code>{shade.hsl}</code>
           <code>{shade.hex}</code>
         </div>
-        <p className="mt-3 w-w-40">{shade.usage}</p>
+        <p className="mt-3 w-w-52">{shade.usage}</p>
       </div>
     ))}
   </div>
@@ -80,4 +83,81 @@ export const ColorPalette = () => (
       </div>
     ))}
   </>
+);
+
+const variablesMap = Object.entries(generateColorVariables(colors))
+  .map(([cssVar, val]) => `${cssVar}: ${val};`)
+  .join('');
+const secondaryHSL = colors.secondary.DEFAULT.hsl.match(/\d+/g) as string[];
+// Make sure this contains no empty lines, otherwise Sphinx docs will treat this as paragraphs.
+const demoCustomisations = `:root {
+  --w-color-primary: ${colors.primary.DEFAULT.hex};
+  /* Any valid CSS format is supported. */
+  --w-color-primary-200: ${colors.primary[200].hsl};
+  /* Set each HSL component separately to change all hues at once. */
+  --w-color-secondary-hue: ${secondaryHSL[0]};
+  --w-color-secondary-saturation: ${secondaryHSL[1]}%;
+  --w-color-secondary-lightness: ${secondaryHSL[2]}%;
+}`;
+
+const warningComment =
+  '<!-- Auto-generated with Storybook. See https://github.com/wagtail/wagtail/blob/main/client/src/tokens/colors.stories.tsx. Copy this comment’s parent section to update the documentation -->';
+
+/**
+ * Story using inline styles only so it can be copy-pasted into the Wagtail documentation for color customisations.
+ */
+export const ColorCustomisations = () => (
+  <section>
+    <div
+      // eslint-disable-next-line react/no-danger
+      dangerouslySetInnerHTML={{
+        __html: warningComment,
+      }}
+    />
+    <p>
+      Make sure to test any customisations against our{' '}
+      <a href={getContrastGridLink()}>Contrast Grid</a>. Try out your own
+      customisations with this interactive style editor:
+    </p>
+    <style>{`:root {${variablesMap}}`}</style>
+    <pre>
+      <style contentEditable style={{ display: 'block' }}>
+        {demoCustomisations}
+      </style>
+    </pre>
+    <table>
+      <thead>
+        <tr>
+          <th aria-label="Swatch" />
+          <th>Variable</th>
+          <th>Usage</th>
+        </tr>
+      </thead>
+      <tbody>
+        {Object.values(colors).map((hues) =>
+          Object.entries(hues)
+            .sort(([nameA], [nameB]) =>
+              nameA === 'DEFAULT' ? -1 : Number(nameB) - Number(nameA),
+            )
+            .map(([name, shade]) => (
+              <tr key={shade.hex}>
+                <td
+                  style={{
+                    height: '1.5rem',
+                    width: '1.5rem',
+                    backgroundColor: `var(${shade.cssVariable})`,
+                    border: '1px solid #333',
+                    forcedColorAdjust: 'none',
+                  }}
+                />
+                <td>
+                  <code>{shade.cssVariable}</code>
+                </td>
+                <td>{shade.usage}</td>
+              </tr>
+            )),
+        )}
+      </tbody>
+    </table>
+  </section>
 );
